@@ -82,6 +82,10 @@ namespace iRacingReplayDirector
             }catch (Exception ex)
             {
                 TraceDebug.WriteLine(ex.ToString());
+                throw new InvalidOperationException(
+                    "Could not load overlay plugin '" + pluginName + "'. " +
+                    "If the program was downloaded as a ZIP, unblock the ZIP in Windows Properties before extracting it again to a new folder. " +
+                    "Details: " + ex.Message, ex);
             }
             
         }
