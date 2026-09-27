@@ -32,24 +32,28 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $source = 'bin/Debug'
           $package = 'windows-package'
-          $pluginSource = 'bin/x64/Debug/plugins'
+          $pluginSupport = 'plugins/iRacingDirector.Plugin.Support/iRacingDirector.Plugin.Support/bin/Debug/iRacingDirector.Plugin.Support.dll'
+          if (!(Test-Path $pluginSupport)) {
+            throw 'The shared plugin support DLL is missing.'
+          }
           if (!(Test-Path "$source/iRacingReplayDirector.exe")) {
             throw 'The application executable is missing.'
           }
           New-Item -ItemType Directory -Path $package | Out-Null
           Copy-Item "$source/*" $package -Recurse -Force
           foreach ($plugin in @(
-            @{ Folder = 'iRacingDirector.Plugin.StandardOverlays'; Dll = 'StandardOverlays.dll' },
-            @{ Folder = 'JockeOverlays'; Dll = 'JockeOverlays.dll' },
-            @{ Folder = 'NoOverlay'; Dll = 'NoOverlay.dll' }
+            @{ Folder = 'StandardOverlays'; Source = 'iRacingDirector.Plugin.StandardOverlays'; Dll = 'StandardOverlays.dll' },
+            @{ Folder = 'JockeOverlays'; Source = 'JockeOverlays'; Dll = 'JockeOverlays.dll' },
+            @{ Folder = 'NoOverlay'; Source = 'NoOverlay'; Dll = 'NoOverlay.dll' }
           )) {
-            $folder = "$pluginSource/$($plugin.Folder)"
-            if (!(Test-Path "$folder/$($plugin.Dll)") -or
-                !(Test-Path "$folder/iRacingDirector.Plugin.Support.dll")) {
-              throw "Required plugin files are missing from $folder"
+            $dll = "plugins/$($plugin.Source)/bin/Debug/$($plugin.Dll)"
+            if (!(Test-Path $dll)) {
+              throw "Required plugin file is missing: $dll"
             }
-            New-Item -ItemType Directory -Force -Path "$package/plugins/$($plugin.Folder)" | Out-Null
-            Copy-Item "$folder/*.dll" "$package/plugins/$($plugin.Folder)/" -Force
+            $destination = "$package/plugins/$($plugin.Folder)"
+            New-Item -ItemType Directory -Force -Path $destination | Out-Null
+            Copy-Item $dll $destination -Force
+            Copy-Item $pluginSupport $destination -Force
           }
 
       - name: Upload Windows ZIP
