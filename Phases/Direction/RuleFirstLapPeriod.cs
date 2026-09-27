@@ -88,23 +88,21 @@ namespace iRacingReplayDirector.Phases.Direction
         {
             if (reselectLeaderAt < DateTime.Now)
             {
-                int posLeaderOnTrack = 1;
-                var leader = data.Telemetry.Cars.First(c => c.Position == posLeaderOnTrack);
+                // Replay telemetry may briefly contain no car in position 1 after a seek.
+                // Choose the best ranked available car, preferring one on track.
+                var rankedCars = data.Telemetry.Cars
+                    .Where(c => !c.Details.IsPaceCar && c.Position > 0)
+                    .OrderBy(c => c.Position)
+                    .ToArray();
 
-                //InterestState curState = editMarker.getInterestState();
-                if (editMarker.getInterestState() == InterestState.FirstLap)
+                var leader = rankedCars.FirstOrDefault(c => !c.IsInPits)
+                    ?? rankedCars.FirstOrDefault();
+
+                if (leader == null)
                 {
-
-                    ////if in first lap make sure that first car on track is selected as leader
-                    while (leader.IsInPits)
-                    {
-                        posLeaderOnTrack += 1;
-                        leader = data.Telemetry.Cars[posLeaderOnTrack];
-                        //leader = data.Telemetry.Cars.First(c => c.Position == posLeaderOnTrack);
-                    }
-                    ;
+                    TraceInfo.WriteLine("No ranked car available at {0}; waiting for the next sample.", data.Telemetry.SessionTimeSpan);
+                    return;
                 }
-
 
                 cameraControl.CameraOnDriver(leader.Details.CarNumberRaw, cameraControl.RaceStartCameraNumber);
 
