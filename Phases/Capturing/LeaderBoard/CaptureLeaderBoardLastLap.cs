@@ -83,7 +83,10 @@ namespace iRacingReplayDirector.Phases.Capturing.LeaderBoard
                 .Select(d => d.Clone())
                 .ToList();
 
-            drivers.Insert((int)position - 1, new OverlayData.Driver
+            // The displayed list can contain fewer cars than the official result
+            // (for example when cars retired). Insert within the available range.
+            var insertAt = Math.Max(0, Math.Min(position - 1, drivers.Count));
+            drivers.Insert(insertAt, new OverlayData.Driver
             {
                 CarNumber = driver.CarNumber,
                 UserName = driver.UserName,
