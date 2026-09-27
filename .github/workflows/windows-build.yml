@@ -1,0 +1,27 @@
+name: Windows build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Set up NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore dependencies
+        run: nuget restore iRacingReplayDirectorApps.sln
+
+      - name: Build solution
+        run: msbuild iRacingReplayDirectorApps.sln /m /p:Configuration=Debug /p:Platform="Any CPU" /verbosity:minimal
