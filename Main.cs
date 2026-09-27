@@ -57,6 +57,10 @@ namespace iRacingReplayDirector
         States _states = States.Idle;
 
         System.Windows.Forms.Timer lookForAudioBitRates;
+        System.Windows.Forms.Timer transcodeActivityTimer;
+        Label transcodeActivityLabel;
+        DateTime lastTranscodeProgress;
+        long lastTranscodeTimestamp = -1;
         LogMessages logMessagges;
         const string DefaultLogFileName = "general.log";
         SessionData curSession;
@@ -88,6 +92,10 @@ namespace iRacingReplayDirector
             switch (_states)
             {
                 case States.Idle:
+                    if (transcodeActivityTimer != null)
+                        transcodeActivityTimer.Stop();
+                    if (transcodeActivityLabel != null)
+                        transcodeActivityLabel.Visible = false;
                     BeginProcessButton.Enabled = Directory.Exists(workingFolderTextBox.Text) && isConnected && trackCamerasDefined && ReplaySessionTypeSupported();
                     configureTrackCamerasLabel.Visible = isConnected && !trackCamerasDefined;
                     transcodeVideoButton.Enabled = IsReadyForTranscoding();
@@ -166,6 +174,28 @@ namespace iRacingReplayDirector
             iracingEvents = new iRacingEvents();
 
             InitializeComponent();
+
+            transcodeActivityLabel = new Label
+            {
+                Location = new System.Drawing.Point(23, 233),
+                Size = new System.Drawing.Size(700, 24),
+                Visible = false
+            };
+            tabTranscoding.Controls.Add(transcodeActivityLabel);
+            transcodeActivityLabel.BringToFront();
+            transcodeActivityTimer = new System.Windows.Forms.Timer { Interval = 1000 };
+            transcodeActivityTimer.Tick += (sender, args) => UpdateTranscodeActivity();
+        }
+
+        void UpdateTranscodeActivity()
+        {
+            var seconds = (int)(DateTime.UtcNow - lastTranscodeProgress).TotalSeconds;
+            transcodeActivityLabel.Text = seconds >= 60
+                ? "No encoding progress for " + seconds + " seconds. The program may be busy or stalled; check Log Messages."
+                : lastTranscodeTimestamp < 0
+                    ? "Encoding started. Waiting for the first progress report (" + seconds + " seconds)."
+                    : "Last encoding progress " + seconds + " seconds ago.";
+            transcodeActivityLabel.ForeColor = seconds >= 60 ? System.Drawing.Color.DarkRed : System.Drawing.Color.Black;
         }
 
         string GetDefaultLogFileName()
@@ -373,6 +403,11 @@ namespace iRacingReplayDirector
         void TranscodeVideo_Click(object sender, EventArgs e)
         {
             State = States.Transcoding;
+            lastTranscodeTimestamp = -1;
+            lastTranscodeProgress = DateTime.UtcNow;
+            transcodeActivityLabel.Visible = true;
+            UpdateTranscodeActivity();
+            transcodeActivityTimer.Start();
             SetTanscodeMessage(trancodingErrorMessage: null);
 
             LogListener.ToFile(Path.ChangeExtension(sourceVideoTextBox.Text, "log"));
@@ -396,6 +431,12 @@ namespace iRacingReplayDirector
 
         void OnTranscoderProgress(long timestamp, long duration)
         {
+            if (timestamp != lastTranscodeTimestamp)
+            {
+                lastTranscodeTimestamp = timestamp;
+                lastTranscodeProgress = DateTime.UtcNow;
+                UpdateTranscodeActivity();
+            }
             transcodeProgressBar.Value = Math.Min(transcodeProgressBar.Maximum, (int)(timestamp * transcodeProgressBar.Maximum / duration));
         }
 
