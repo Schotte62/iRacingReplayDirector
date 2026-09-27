@@ -29,10 +29,12 @@ Requirements
 * Only tested with the PCM audio codec
 * Only supports MPEG/H.264 video codec for capture/conversion
 
-Known Issues
-============
+Installation: unblock the ZIP before extracting
+===============================================
 
-- Microsoft security features do prevent loading the plugin dll's used for transcoding. [If transcoding doesn start check whether the dlls are blocked.](https://github.com/MerlinCooper/iRacingReplayDirector/issues/91#issuecomment-1417442193). Looking for a permanent corrective action - any advise highly appreciated.  
+Before extracting the downloaded ZIP file, right-click the ZIP in Windows Explorer, select **Properties**, check **Unblock** (or **Allow** on some Windows installations) under **General**, and click **Apply**. Only then extract the ZIP to a new folder. This prevents Windows from marking the extracted plugin DLLs as blocked, which can stop video transcoding from starting.
+
+If you already extracted the ZIP while it was blocked, unblock the original ZIP and extract it again to a new folder. See [the reported plugin loading issue](https://github.com/MerlinCooper/iRacingReplayDirector/issues/91#issuecomment-1417442193).
 
 HOW TO USE
 ==========
