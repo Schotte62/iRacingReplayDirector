@@ -47,6 +47,9 @@ namespace iRacingReplayDirector.Phases.Direction
         public void Activate(string workingFolder, bool bStartRecording = true)
         {
             this.workingFolder = workingFolder;
+            // A new recording must not reuse video paths found during an earlier run.
+            if (curVideoStatus == videoStatus.stopped)
+                captureFileNames.Clear();
             this.started = DateTime.Now;
 
             timer = new Timer(500);
