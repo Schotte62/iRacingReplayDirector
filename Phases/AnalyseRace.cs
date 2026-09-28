@@ -103,7 +103,16 @@ namespace iRacingReplayDirector.Phases
 
             if (!Settings.Default.DisableIncidentsSearch)
             {
-                var incidentSamples = iRacing.GetDataFeed().RaceIncidents2(Settings.Default.IncidentScanWait, shortTestOnly ? 12 : int.MaxValue);
+                int scanSamples = 0;
+                var incidentFeed = iRacing.GetDataFeed().Select(sample =>
+                {
+                    scanSamples++;
+                    if (scanSamples <= 10 || scanSamples % 100 == 0)
+                        TraceDebug.WriteLine("Incident scan sample {0}: CamCarIdx={1}, ReplayFrameNum={2}",
+                            scanSamples, sample.Telemetry.CamCarIdx, sample.Telemetry.ReplayFrameNum);
+                    return sample;
+                });
+                var incidentSamples = incidentFeed.RaceIncidents2(Settings.Default.IncidentScanWait, shortTestOnly ? 12 : int.MaxValue);
 
                 foreach (var data in incidentSamples)
                     incidents.Process(data);
