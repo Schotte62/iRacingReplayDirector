@@ -122,7 +122,7 @@ namespace iRacingReplayDirector.Phases
             if (paceCar == null)
                 throw new InvalidOperationException("Incident scan: pace car not found in replay driver data.");
 
-            int paceCarIdx = paceCar.CarIdx;
+            long paceCarIdx = paceCar.CarIdx;
             TraceInfo.WriteLine("Incident scan: pace car number 0 has CarIdx {0}", paceCarIdx);
             iRacing.Replay.SetSpeed(0);
             iRacing.Replay.Wait();
