@@ -189,8 +189,29 @@ namespace iRacingReplayDirector.Phases
                     Settings.AppliedTimingFactor = 1.0 / Settings.Default.TimingFactorForShortTest;
                 }
 
-                videoCapture.Activate(workingFolder);                           //Start video capturing FileName will be given by recording software. 
+                var recordingStarted = DateTime.Now;
+                videoCapture.Activate(workingFolder);                           //Start video capturing FileName will be given by recording software.
                 var startTime = DateTime.Now;
+
+                // Streamlabs must create a separate race recording after the intro.
+                // Fail before replaying the whole race if only the intro file exists.
+                bool raceFileFound = false;
+                for (int attempt = 0; attempt < 20; attempt++)
+                {
+                    raceFileFound = Directory.GetFiles(workingFolder, "*.avi")
+                        .Concat(Directory.GetFiles(workingFolder, "*.mp4"))
+                        .Any(file => File.GetCreationTime(file) >= recordingStarted);
+                    if (raceFileFound)
+                        break;
+                    Thread.Sleep(500);
+                }
+                if (!raceFileFound)
+                {
+                    videoCapture.Deactivate();
+                    iRacing.Replay.SetSpeed(0);
+                    throw new InvalidOperationException(
+                        "No new race video file appeared within 10 seconds after the intro. Check Streamlabs recording before retrying.");
+                }
 
                 overlayData.CapturedVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
