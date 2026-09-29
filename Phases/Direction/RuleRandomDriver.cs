@@ -44,7 +44,9 @@ namespace iRacingReplayDirector.Phases.Direction
             this.sessionData = sessionData;
             this.stickyTime = stickyTime;
 
-            allCarIndexes = sessionData.DriverInfo.CompetingDrivers.Where(x => !x.IsPaceCar).Select(x => x.CarIdx).ToArray();
+            allCarIndexes = sessionData.DriverInfo.Drivers
+                .Where(x => !(x.CarNumberRaw == 0 && x.UserName == "Pace Car"))
+                .Select(x => x.CarIdx).ToArray();
 
             if (Settings.Default.PreferredDriverNames != null && Settings.Default.PreferredDriverNames.Length > 0)
             {
