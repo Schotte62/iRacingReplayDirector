@@ -60,7 +60,29 @@ namespace iRacingReplayDirector.Phases
             if (bRecordUsingPauseResume)
             {
                 //Retrieve list of raceEvents selected depending on the duration of the highlight video
-                var totalRaceEvents = RaceEventExtension.GetInterestingRaceEvents(overlayData.RaceEvents.ToList(), bRecordUsingPauseResume);
+                var selectedRaceEvents = RaceEventExtension.GetInterestingRaceEvents(overlayData.RaceEvents.ToList(), bRecordUsingPauseResume);
+                var totalRaceEvents = new List<OverlayData.RaceEvent>();
+                foreach (var selected in selectedRaceEvents)
+                {
+                    var last = totalRaceEvents.LastOrDefault();
+                    if (last != null && selected.StartTime <= last.EndTime)
+                    {
+                        last.EndTime = Math.Max(last.EndTime, selected.EndTime);
+                        continue;
+                    }
+
+                    totalRaceEvents.Add(new OverlayData.RaceEvent
+                    {
+                        StartTime = selected.StartTime,
+                        EndTime = selected.EndTime,
+                        Interest = selected.Interest,
+                        Position = selected.Position,
+                        RaceLapNumber = selected.RaceLapNumber,
+                        WithOvertake = selected.WithOvertake
+                    });
+                }
+                if (totalRaceEvents.Count == 0)
+                    throw new InvalidOperationException("No race events selected for fast recording.");
                 int nextframePositionInRace = raceStartFrameNumber;
                 //double prevEndTime = 0;
                 OverlayData.RaceEvent lastRaceEvent = null;
@@ -142,7 +164,15 @@ namespace iRacingReplayDirector.Phases
 
 
                 TraceDebug.WriteLine("Video Capture of Race-Events completed");
-                raceVideo.Stop();
+                var files = raceVideo.Deactivate();
+                if (files.Count == 0)
+                    throw new Exception("Unable to find video files in '{0}' - possible wrong working folder".F(workingFolder));
+
+                var overlayFile = SaveOverlayData(overlayData, files);
+                iRacing.Replay.SetSpeed(0);
+                AltTabBackToApp();
+                _WithOverlayFile(overlayFile);
+                onComplete(overlayFile);
             }
             else
             {        //Code to be removed after being able to implment working solution where analysis phase and replay-capture phase are distinct processes. 
