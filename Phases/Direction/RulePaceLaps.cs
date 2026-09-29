@@ -20,6 +20,7 @@ using iRacingReplayDirector.Phases.Capturing;
 using iRacingSDK;
 using iRacingSDK.Support;
 using System;
+using System.Linq;
 
 namespace iRacingReplayDirector.Phases.Direction
 {
@@ -43,6 +44,15 @@ namespace iRacingReplayDirector.Phases.Direction
             wasUnderPaceCar = false;
         }
 
+        // The SDK's UnderPaceCar assumes the pace car always has CarIdx 0.
+        internal static bool UnderPaceCar(DataSample data)
+        {
+            var paceCar = data.SessionData.DriverInfo.Drivers
+                .FirstOrDefault(driver => driver.CarNumberRaw == 0 && driver.UserName == "Pace Car");
+            return paceCar != null &&
+                data.Telemetry.CarIdxTrackSurface[paceCar.CarIdx] == TrackLocation.OnTrack;
+        }
+
         public bool IsActive(DataSample data)
         {
             if (restarting)
@@ -58,7 +68,7 @@ namespace iRacingReplayDirector.Phases.Direction
 
             if (wasUnderPaceCar)
             {
-                if (data.Telemetry.UnderPaceCar)
+                if (UnderPaceCar(data))
                     return true;
 
                 restartEndTime = data.Telemetry.SessionTimeSpan + RestartStickyTime;
@@ -70,7 +80,7 @@ namespace iRacingReplayDirector.Phases.Direction
                 return true;
             }
 
-            wasUnderPaceCar = data.Telemetry.UnderPaceCar;
+            wasUnderPaceCar = UnderPaceCar(data);
             if (wasUnderPaceCar)
             {
                 TraceInfo.WriteLineIf(wasUnderPaceCar, "{0} Double Yellows. Pace Car", data.Telemetry.SessionTimeSpan);

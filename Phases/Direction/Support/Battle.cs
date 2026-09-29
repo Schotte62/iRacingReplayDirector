@@ -67,7 +67,9 @@ namespace iRacingReplayDirector.Phases.Direction.Support
 
             var distances = data.Telemetry.CarIdxDistance
                     .Select((d, i) => new { CarIdx = i, Distance = d })
-                    .Skip(1)
+                    .Where(d => data.SessionData.DriverInfo.Drivers
+                        .Any(driver => driver.CarIdx == d.CarIdx &&
+                            !(driver.CarNumberRaw == 0 && driver.UserName == "Pace Car")))
                     .Where(d => data.Telemetry.CarIdxTrackSurface[d.CarIdx] == TrackLocation.OnTrack)
                     .Where(d => d.Distance > 0)
                     .OrderByDescending(d => d.Distance)

@@ -212,7 +212,7 @@ namespace iRacingReplayDirector.Phases.Direction
         {
             if (isInBattle)
             {
-                if (data.Telemetry.UnderPaceCar)
+                if (RulePaceLaps.UnderPaceCar(data))
                     return new BattleState(BattlePosition.Finished);
 
                 if (!HasBattleTimeout(data))
@@ -221,7 +221,7 @@ namespace iRacingReplayDirector.Phases.Direction
                 return SearchForNextBattle(data, notFound: () => new BattleState(BattlePosition.Finished));
             }
 
-            if (data.Telemetry.UnderPaceCar)
+            if (RulePaceLaps.UnderPaceCar(data))
                 return new BattleState(BattlePosition.Outside);
 
             return SearchForNextBattle(data, notFound: () => new BattleState(BattlePosition.Outside));
@@ -250,7 +250,7 @@ namespace iRacingReplayDirector.Phases.Direction
                 return true;
             }
 
-            if (data.Telemetry.UnderPaceCar)
+            if (RulePaceLaps.UnderPaceCar(data))
             {
                 TraceInfo.WriteLine("{0} Battle has stopped, due to double yellows.", data.Telemetry.SessionTimeSpan);
                 return true;

@@ -103,10 +103,79 @@ namespace iRacingReplayDirector.Phases
 
             if (!Settings.Default.DisableIncidentsSearch)
             {
-                var incidentSamples = iRacing.GetDataFeed().RaceIncidents2(Settings.Default.IncidentScanWait, shortTestOnly ? 12 : int.MaxValue);
-
-                foreach (var data in incidentSamples)
+                foreach (var data in ScanIncidents(iRacing.GetDataFeed(),
+                    Settings.Default.IncidentScanWait, shortTestOnly ? 12 : int.MaxValue))
                     incidents.Process(data);
+            }
+        }
+
+        // The SDK's RaceIncidents2 assumes that the pace car always has CarIdx 0.
+        // In current replays its car number is 0, but its CarIdx can be elsewhere.
+        static IEnumerable<DataSample> ScanIncidents(IEnumerable<DataSample> samples, int settleSamples, int maxIncidents)
+        {
+            if (maxIncidents <= 0)
+                yield break;
+
+            var first = samples.First();
+            var paceCar = first.SessionData.DriverInfo.Drivers
+                .FirstOrDefault(driver => driver.CarNumberRaw == 0 && driver.UserName == "Pace Car");
+            if (paceCar == null)
+                throw new InvalidOperationException("Incident scan: pace car not found in replay driver data.");
+
+            long paceCarIdx = paceCar.CarIdx;
+            TraceInfo.WriteLine("Incident scan: pace car number 0 has CarIdx {0}", paceCarIdx);
+            iRacing.Replay.SetSpeed(0);
+            iRacing.Replay.Wait();
+
+            settleSamples = Math.Max(2, settleSamples);
+            var recentFrames = new Queue<int>();
+            int lastIncidentFrame = -2;
+            int found = 0;
+            int state = 0; // 0: select pace car, 1: await camera, 2: await incident
+            DateTime deadline = DateTime.UtcNow;
+
+            foreach (var sample in samples.TakeWhile(data => data.Telemetry.SessionState != SessionState.CoolDown))
+            {
+                if (state == 0)
+                {
+                    iRacing.Replay.NoWait.CameraOnDriver(0, 0);
+                    deadline = DateTime.UtcNow.AddSeconds(10);
+                    state = 1;
+                }
+                else if (state == 1 && sample.Telemetry.CamCarIdx == paceCarIdx)
+                {
+                    iRacing.Replay.NoWait.MoveToNextIncident();
+                    recentFrames.Clear();
+                    deadline = DateTime.UtcNow.AddSeconds(10);
+                    state = 2;
+                }
+                else if (state == 2)
+                {
+                    recentFrames.Enqueue(sample.Telemetry.ReplayFrameNum);
+                    if (recentFrames.Count > settleSamples)
+                        recentFrames.Dequeue();
+
+                    if (recentFrames.Count == settleSamples &&
+                        recentFrames.All(frame => frame == sample.Telemetry.ReplayFrameNum))
+                    {
+                        int frame = sample.Telemetry.ReplayFrameNum;
+                        if (frame == lastIncidentFrame || sample.Telemetry.CamCarIdx == paceCarIdx)
+                            yield break;
+
+                        lastIncidentFrame = frame;
+                        TraceDebug.WriteLine("Incident scan: incident at frame {0}, CamCarIdx {1}",
+                            frame, sample.Telemetry.CamCarIdx);
+                        yield return sample;
+                        if (++found >= maxIncidents)
+                            yield break;
+                        state = 0;
+                    }
+                }
+
+                if (state != 0 && DateTime.UtcNow > deadline)
+                    throw new TimeoutException(String.Format(
+                        "Incident scan timed out at frame {0}, CamCarIdx {1}, pace CarIdx {2}, state {3}.",
+                        sample.Telemetry.ReplayFrameNum, sample.Telemetry.CamCarIdx, paceCarIdx, state));
             }
         }
 
